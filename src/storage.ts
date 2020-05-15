@@ -5,6 +5,12 @@ import type { FbPage } from './definitions';
 const { log } = Apify.utils;
 
 export const emptyState = (): FbPage => ({
+    trendKey: null,
+    hashtag: null,
+    languageCode: null,
+    countryCode: null,
+    crawler: 'facebook',
+
     categories: [],
     info: [],
     likes: 0,

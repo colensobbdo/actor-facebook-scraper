@@ -1,5 +1,6 @@
 {
     "compilerOptions": {
+        "outDir": "build",
         "target": "es2018",
         "module": "commonJS",
         "allowSyntheticDefaultImports": false,

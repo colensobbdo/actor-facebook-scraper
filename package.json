@@ -17,25 +17,34 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/pocesar/actor-facebook-scraper.git"
+		"url": "https://github.com/colensobbdo/actor-facebook-scraper.git"
 	},
 	"devDependencies": {
 		"@apify/eslint-config": "^0.0.3",
-		"@types/node": "^12",
+		"@types/lodash.get": "^4.4.6",
+		"@types/node": "^12.12.37",
 		"@types/puppeteer": "^2.0.1",
 		"@types/user-agents": "^1.0.0",
-		"@types/lodash.get": "^4.4.6",
-		"eslint": "^6.8.0",
-		"jest": "^25.4.0",
 		"@typescript-eslint/eslint-plugin": "^2.29.0",
 		"@typescript-eslint/parser": "^2.29.0",
-		"eslint-plugin-import": "^2.20.2"
+		"eslint": "^6.8.0",
+		"eslint-plugin-import": "^2.20.2",
+		"jest": "^25.4.0"
 	},
 	"scripts": {
+		"dev": "clear; apify run --purge",
+		"dev:docker": "docker build -t actor-facebook-scraper:latest .; docker run --rm -it -e NODE_ENV=development actor-facebook-scraper:latest",
 		"start": "node -r ts-node/register/transpile-only src/main.ts",
 		"lint": "eslint ./src --ext .js,.jsx",
 		"lint:fix": "eslint ./src --ext .js,.jsx --fix",
 		"test": "jest"
 	},
-	"license": "Apache-2.0"
+	"author": "Paulo Cesar",
+	"license": "Apache-2.0",
+	"contributors": [
+		{
+			"name": "Fabio Cigliano",
+			"email": "fabio.cigliano@gmail.com"
+		}
+	]
 }

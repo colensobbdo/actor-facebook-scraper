@@ -1,4 +1,5 @@
 import Apify from 'apify';
+import * as moment from "moment";
 import { InfoError } from './error';
 import { LABELS, CSS_SELECTORS } from './constants';
 import {
@@ -29,9 +30,56 @@ import type { Schema, FbLabel, FbSection } from './definitions';
 
 import LANGUAGES = require('./languages.json');
 
+// // eslint-disable-next-line no-extend-native
+// Object.defineProperty(Array.prototype, 'flat', {
+//     // eslint-disable-next-line object-shorthand
+//     value: function (depth = 1) {
+//         // eslint-disable-next-line prefer-arrow-callback
+//         return this.reduce(function (flat: string | any[], toFlatten: any[]) {
+//             return flat.concat((Array.isArray(toFlatten) && (depth > 1)) ? toFlatten.flat(depth - 1) : toFlatten);
+//         }, []);
+//     },
+// });
+
+const isDevelopment =
+    !process.env.NODE_ENV || process.env.NODE_ENV === "development";
+
+if (isDevelopment) {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+    // @ts-ignore
+    process.env.MAX_CONCURRENCY = 1;
+
+    Apify.getInput = async function () {
+        return {
+            trendKey: null,
+            hashtag: null,
+            languageCode: "en-US",
+            countryCode: "nz",
+            howManyDays: 30,
+            debug: true,
+            startUrls: [
+                {
+                    url: "https://www.facebook.com/PedigreeNZ/",
+                },
+            ],
+            commentsMode: "RANKED_UNFILTERED",
+            maxPosts: 1,
+            maxPostComments: 1,
+            maxReviews: 1,
+            scrapeAbout: false,
+            scrapeReviews: true,
+            scrapePosts: true,
+            scrapeServices: false,
+            proxyConfiguration: {
+                useApifyProxy: false,
+            },
+        };
+    };
+}
+
 const { log, puppeteer } = Apify.utils;
 
-Apify.main(async () => {
+async function run() {
     const input: Schema | null = await Apify.getInput();
 
     if (!input || typeof input !== 'object') {
@@ -39,21 +87,37 @@ Apify.main(async () => {
     }
 
     const {
+        trendKey = null,
+        hashtag = null,
+        languageCode: language = "en-US",
+        countryCode = null,
+        howManyDays = 3,
+        debug = false,
         startUrls,
         proxyConfiguration,
         maxPosts = 3,
-        maxPostDate,
+        // maxPostDate,
         maxPostComments = 15,
-        maxReviewDate,
-        maxCommentDate,
+        // maxReviewDate,
+        // maxCommentDate,
         maxReviews = 3,
         commentsMode = 'RANKED_THREADED',
         scrapeAbout = true,
         scrapeReviews = true,
         scrapePosts = true,
         scrapeServices = true,
-        language = 'en-US',
+        // language = 'en-US',
     } = input;
+
+    const startDate = `${howManyDays} days`
+    const maxPostDate = startDate;
+    const maxCommentDate = startDate;
+    const maxReviewDate = startDate;
+    const languageCode = `${language}`.split("-")[0];
+
+    if (debug || process.env.debug === "true" || isDevelopment) {
+        log.setLevel(log.LEVELS.DEBUG);
+    }
 
     if (!Array.isArray(startUrls) || !startUrls.length) {
         throw new Error('You must provide the "startUrls" input');
@@ -68,7 +132,24 @@ Apify.main(async () => {
     }
 
     const startUrlsRequests = new Apify.RequestList({
-        sources: startUrls,
+        sources: startUrls.map((url) => {
+            const opts = {
+                url: typeof url === "object" ? url.url : url,
+                userData: {
+                    // not supported here
+                    hashtag,
+                    trendKey,
+                    countryCode,
+                    // language selected
+                    languageCode,
+                    // crawler type
+                    crawler: "facebook",
+                },
+            };
+            log.info("Pushing request to queue", opts);
+
+            return opts;
+        }),
     });
 
     await startUrlsRequests.initialize();
@@ -86,19 +167,19 @@ Apify.main(async () => {
     const processedPostDate = maxPostDate ? parseRelativeDate(maxPostDate) : null;
 
     if (processedPostDate) {
-        log.info(`Getting posts from ${new Date(processedPostDate).toLocaleString()} and newer`);
+        log.info(`Getting posts from ${new Date(processedPostDate).toISOString()} and newer`);
     }
 
     const processedCommentDate = maxCommentDate ? parseRelativeDate(maxCommentDate) : null;
 
     if (processedCommentDate) {
-        log.info(`Getting comments from ${new Date(processedCommentDate).toLocaleString()} and newer`);
+        log.info(`Getting comments from ${new Date(processedCommentDate).toISOString()} and newer`);
     }
 
     const processedReviewDate = maxReviewDate ? parseRelativeDate(maxReviewDate) : null;
 
     if (processedReviewDate) {
-        log.info(`Getting reviews from ${new Date(processedReviewDate).toLocaleString()} and newer`);
+        log.info(`Getting reviews from ${new Date(processedReviewDate).toISOString()} and newer`);
     }
 
     const requestQueue = await Apify.openRequestQueue();
@@ -115,7 +196,7 @@ Apify.main(async () => {
         throw new Error('No requests were loaded from startUrls');
     }
 
-    const initSubPage = async (subpage: { url: string; section: FbSection }, url: string) => {
+    const initSubPage = async (subpage: { url: string; section: FbSection }, url: string, userData: any) => {
         if (subpage.section === 'home') {
             const username = extractUsernameFromUrl(subpage.url);
 
@@ -124,6 +205,7 @@ Apify.main(async () => {
             await map.append(username, async (value) => {
                 return {
                     ...emptyState(),
+                    ...userData,
                     pageUrl: normalizeOutputPageUrl(subpage.url),
                     '#url': subpage.url,
                     '#ref': url,
@@ -135,6 +217,7 @@ Apify.main(async () => {
         await requestQueue.addRequest({
             url: subpage.url,
             userData: {
+                ...userData,
                 label: 'PAGE' as FbLabel,
                 sub: subpage.section,
                 ref: url,
@@ -151,17 +234,18 @@ Apify.main(async () => {
     ] as FbSection[];
 
     for (const request of processedRequests) {
-        const { url } = request;
+        const { url, userData } = request;
         const urlType = getUrlLabel(url);
 
         if (urlType === 'PAGE') {
             for (const subpage of generateSubpagesFromUrl(url, pageInfo)) {
-                await initSubPage(subpage, url);
+                await initSubPage(subpage, url, userData);
             }
         } else if (urlType === 'LISTING') {
             await requestQueue.addRequest({
                 url,
                 userData: {
+                    ...userData,
                     label: urlType,
                     useMobile: false,
                 },
@@ -175,6 +259,8 @@ Apify.main(async () => {
         requestQueue,
         useSessionPool: true,
         maxRequestRetries: 5,
+        // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+        // @ts-ignore
         autoscaledPoolOptions: {
             // make it easier to debug locally with slowMo without switching tabs
             maxConcurrency,
@@ -268,6 +354,7 @@ Apify.main(async () => {
             });
 
             try {
+                log.debug(`Navigating to page ${request.url}`);
                 const response = await page.goto(request.url, {
                     waitUntil: 'networkidle2',
                     timeout: 60000,
@@ -348,7 +435,7 @@ Apify.main(async () => {
 
                     for (const url of pagesUrls) {
                         for (const subpage of generateSubpagesFromUrl(url, pageInfo)) {
-                            await initSubPage(subpage, request.url);
+                            await initSubPage(subpage, request.url, userData);
                         }
                     }
 
@@ -425,6 +512,7 @@ Apify.main(async () => {
                                     await requestQueue.addRequest({
                                         url: url.url,
                                         userData: {
+                                            ...userData,
                                             label: LABELS.POST,
                                             useMobile: false,
                                             username,
@@ -492,7 +580,9 @@ Apify.main(async () => {
                         date: processedCommentDate,
                     });
 
-                    await map.append(username, async (value) => {
+                    // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+                    // @ts-ignore
+                    await map.append(username, (value) => {
                         return {
                             ...value,
                             posts: [
@@ -550,6 +640,8 @@ Apify.main(async () => {
         },
     });
 
+    log.info('Starting dataset...');
+
     await crawler.run();
 
     await persistState();
@@ -566,4 +658,13 @@ Apify.main(async () => {
     })));
 
     log.info(`Done in ${Math.round(elapsed() / 60000)}m!`);
+}
+
+Apify.main(async () => {
+    try {
+        return await run();
+    } catch (err) {
+        console.error(err);
+        log.error(err);
+    }
 });

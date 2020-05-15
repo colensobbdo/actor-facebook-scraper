@@ -32,6 +32,12 @@ export interface FbGraphQl {
 }
 
 export interface Schema {
+    trendKey?: string;
+    hashtag?: string;
+    languageCode?: string;
+    countryCode?: string;
+    howManyDays: number;
+    debug?: boolean;
     startUrls: Array<string | { url: string }>;
     proxyConfiguration?: any;
     maxPosts?: number;
@@ -44,7 +50,7 @@ export interface Schema {
     scrapeReviews?: boolean;
     scrapePosts?: boolean;
     scrapeServices?: boolean;
-    language?: string;
+    // language?: string;
     commentsMode?: FbCommentsMode;
 }
 
@@ -144,6 +150,12 @@ export interface FbService {
 }
 
 export interface FbPage {
+    trendKey: null;
+    hashtag: null;
+    languageCode: string|null;
+    countryCode: string|null;
+    crawler: 'facebook';
+
     // hidden fields
    "#startedAt"?: string;
    "#finishedAt"?: string;

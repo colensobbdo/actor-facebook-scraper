@@ -4,6 +4,38 @@
     "type": "object",
     "schemaVersion": 1,
     "properties": {
+        "trendKey": {
+            "title": "Trend Key",
+            "type": "string",
+            "description": "Trend key",
+            "editor": "textfield"
+        },
+        "hashtag": {
+            "title": "Hashtag",
+            "type": "string",
+            "description": "Hashtag",
+            "editor": "textfield"
+        },
+        "countryCode": {
+            "title": "Country code",
+            "type": "string",
+            "description": "Just enter the 2-char country code (i.e. nz)",
+            "editor": "textfield"
+        },
+        "howManyDays": {
+            "title": "How many days to go back",
+            "type": "integer",
+            "default": 3,
+            "prefill": 3,
+            "description": "How many days to go back",
+            "editor": "number"
+        },
+        "debug": {
+            "title": "Enable Debug logging",
+            "type": "boolean",
+            "description": "Debug messages will be included in the log. Use <code>context.log.debug('message')</code> to log your own debug messages.",
+            "default": false
+        },
         "startUrls": {
             "title": "Start urls",
             "description": "Can provide either existing pages or business listing in the format https://www.facebook.com/biz/",
@@ -17,7 +49,7 @@
             "uniqueItems": true,
             "editor": "requestListSources"
         },
-        "language": {
+        "languageCode": {
             "title": "Language",
             "description": "Provide the language. Using this setting changes the dataset output.",
             "default": "en-US",
@@ -353,5 +385,5 @@
             "editor": "proxy"
         }
     },
-    "required": ["startUrls", "proxyConfiguration"]
+    "required": ["countryCode", "languageCode", "startUrls", "proxyConfiguration"]
 }

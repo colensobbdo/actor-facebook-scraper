@@ -18,6 +18,11 @@ import { CSS_SELECTORS, DESKTOP_ADDRESS, PSN_POST_TYPE_BLACKLIST } from './const
 import { InfoError } from './error';
 import type { FbPageInfo, FbPost, FbPage, FbGraphQl, FbComment, FbCommentsMode, FbReview, FbService } from './definitions';
 
+// // eslint-disable-next-line
+// // @ts-ignore
+// import allSettled = require('promise.allsettled');
+// allSettled.shim();
+
 import get = require('lodash.get');
 
 const { log, sleep } = Apify.utils;
